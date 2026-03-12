@@ -21,7 +21,7 @@ import android.widget.TextView
 object StarPopUpHelper {
 
     private const val TAG = "StarPopUpHelper"
-    private const val PREFS_NAME = "ShortsPrefs"
+    private const val PREFS_NAME = "reposPrefs"
     private const val KEY_SHOWN_POPUP = "shown_welcome_popup"
 
     fun showStarPopUpIfNeeded(context: Context) {
