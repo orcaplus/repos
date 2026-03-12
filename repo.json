@@ -1,0 +1,9 @@
+{
+    "name": "Repo by orcaplus",
+    "description": "Cloudstream repo collection",
+    "iconUrl": "https://raw.githubusercontent.com/orcaplus/png/refs/heads/main/orcaplus.png",
+    "manifestVersion": 1,
+    "pluginLists": [
+      "https://raw.githubusercontent.com/orcaplus/repos/builds/plugins.json"
+    ]
+}
