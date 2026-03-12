@@ -1,4 +1,4 @@
-package com.Goodshort
+package com.FlickReels
 
 import android.app.Activity
 import android.app.AlertDialog
