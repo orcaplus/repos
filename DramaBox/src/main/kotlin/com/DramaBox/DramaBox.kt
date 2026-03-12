@@ -173,76 +173,63 @@ class DramaBox : MainAPI() {
             ?: 0
     }
 
-    private fun DramaItem.toSearchResult(): SearchResponse? {
-        val id = getPreferredDramaId(this)
-        val title = title?.trim().orEmpty()
-        if (id.isBlank() || title.isBlank()) return null
+    data class DramaListResponse(
+        @field:JsonProperty("data") val data: List<DramaItem>? = null,
+        @field:JsonProperty("meta") val meta: ResponseMeta? = null,
+        @field:JsonProperty("success") val success: Boolean? = null,
+        @field:JsonProperty("message") val message: String? = null,
+    )
 
-        return newTvSeriesSearchResponse(
-            title,
-            buildDramaUrl(
-                dramaId = id,
-                title = title,
-                poster = coverImage,
-                intro = introduction,
-                tags = tags,
-                episodeCount = episodeCount
-            ),
-            TvType.AsianDrama
-        ) {
-            posterUrl = coverImage
-        }
-    }
+    data class DramaDetailResponse(
+        @field:JsonProperty("data") val data: DramaItem? = null,
+        @field:JsonProperty("meta") val meta: ResponseMeta? = null,
+        @field:JsonProperty("success") val success: Boolean? = null,
+        @field:JsonProperty("message") val message: String? = null,
+    )
 
-    private fun getPreferredDramaId(item: DramaItem): String {
-        val fromCover = extractIdFromCover(item.coverImage)
-        if (!fromCover.isNullOrBlank()) return fromCover
-        return item.id?.trim().orEmpty()
-    }
+    data class DramaItem(
+        @field:JsonProperty("id") val id: String? = null,
+        @field:JsonProperty("title") val title: String? = null,
+        @field:JsonProperty("cover_image") val coverImage: String? = null,
+        @field:JsonProperty("introduction") val introduction: String? = null,
+        @field:JsonProperty("tags") val tags: List<String>? = null,
+        @field:JsonProperty("episode_count") val episodeCount: Int? = null,
+    )
 
-    private fun extractIdFromCover(coverImage: String?): String? {
-        val clean = coverImage
-            ?.substringBefore("@")
-            ?.substringBefore("?")
-            ?.trim()
-            .orEmpty()
-        if (clean.isBlank()) return null
+    data class ResponseMeta(
+        @field:JsonProperty("pagination") val pagination: Pagination? = null,
+    )
 
-        val tail = clean.substringAfterLast("/")
-        val id = tail.substringBefore(".").trim()
-        if (id.length < 6 || !id.all { it.isDigit() }) return null
-        return id
-    }
+    data class Pagination(
+        @field:JsonProperty("page") val page: Int? = null,
+        @field:JsonProperty("size") val size: Int? = null,
+        @field:JsonProperty("total") val total: Int? = null,
+        @field:JsonProperty("has_more") val hasMore: Boolean? = null,
+    )
 
-    private fun buildDramaUrl(
-        dramaId: String,
-        title: String? = null,
-        poster: String? = null,
-        intro: String? = null,
-        tags: List<String>? = null,
-        episodeCount: Int? = null,
-    ): String {
-        val params = mutableListOf<String>()
-        title?.takeIf { it.isNotBlank() }?.let { params.add("title=${encodeQuery(it)}") }
-        poster?.takeIf { it.isNotBlank() }?.let { params.add("poster=${encodeQuery(it)}") }
-        intro?.takeIf { it.isNotBlank() }?.let { params.add("intro=${encodeQuery(it)}") }
-        tags?.takeIf { it.isNotEmpty() }?.let { params.add("tags=${encodeQuery(it.joinToString("|"))}") }
-        episodeCount?.takeIf { it > 0 }?.let { params.add("ep=$it") }
-        val suffix = if (params.isEmpty()) "" else "?${params.joinToString("&")}"
-        return "dramabox://drama/$dramaId$suffix"
-    }
+    data class ChapterResponse(
+        @field:JsonProperty("data") val data: List<ChapterContent>? = null,
+        @field:JsonProperty("extras") val extras: List<ChapterContent>? = null,
+        @field:JsonProperty("success") val success: Boolean? = null,
+        @field:JsonProperty("message") val message: String? = null,
+    )
 
-    private fun extractDramaId(url: String): String {
-        return url.substringAfter("drama/").substringBefore("?").ifBlank {
-            url.substringAfter("dramabox://").substringBefore("?").substringBefore("/")
-        }.ifBlank {
-            url.substringAfterLast("/").substringBefore("?")
-        }
-    }
+    data class ChapterContent(
+        @field:JsonProperty("chapter_index") val chapterIndex: String? = null,
+        @field:JsonProperty("stream_url") val streamUrl: List<StreamItem>? = null,
+    )
 
-    private fun encodeQuery(value: String): String {
-        return URLEncoder.encode(value, "UTF-8")
-    }
+    data class StreamItem(
+        @field:JsonProperty("quality") val quality: Int? = null,
+        @field:JsonProperty("url") val url: String? = null,
+    )
+
+    data class LoadData(
+        @field:JsonProperty("bookId") val bookId: String? = null,
+        @field:JsonProperty("episodeNo") val episodeNo: Int? = null,
+    )
+
+    private fun encodeQuery(value: String): String = URLEncoder.encode(value, "UTF-8")
 
     private fun getQueryParam(url: String, key: String): String? {
         val query = url.substringAfter("?", "")
@@ -250,88 +237,27 @@ class DramaBox : MainAPI() {
         val value = query.split("&")
             .firstOrNull { it.startsWith("$key=") }
             ?.substringAfter("=")
-            ?.takeIf { it.isNotBlank() }
             ?: return null
-        return runCatching { URLDecoder.decode(value, "UTF-8") }.getOrNull() ?: value
+        return runCatching { URLDecoder.decode(value, "UTF-8") }.getOrNull()
     }
 
     private fun LoadData.toJsonData(): String = this.toJson()
 
     private fun buildMainUrl(): String {
         val codes = intArrayOf(
-            104, 116, 116, 112, 115, 58, 47, 47,
-            119, 119, 119, 46, 100, 114, 97, 109, 97, 98, 111, 120, 46, 99, 111, 109,
-            47, 105, 110
+            104,116,116,112,115,58,47,47,
+            119,119,119,46,100,114,97,109,97,98,111,120,46,99,111,109,
+            47,105,110
         )
-        val sb = StringBuilder()
-        for (code in codes) sb.append(code.toChar())
-        return sb.toString()
+        return codes.map { it.toChar() }.joinToString("")
     }
 
     private fun buildApiUrl(): String {
         val codes = intArrayOf(
-            104, 116, 116, 112, 115, 58, 47, 47,
-            100, 98, 46, 104, 97, 102, 105, 122, 104, 105, 98, 110, 117, 115, 121, 97, 109,
-            46, 109, 121, 46, 105, 100
+            104,116,116,112,115,58,47,47,
+            100,98,46,104,97,102,105,122,104,105,98,110,117,115,121,97,109,
+            46,109,121,46,105,100
         )
-        val sb = StringBuilder()
-        for (code in codes) sb.append(code.toChar())
-        return sb.toString()
+        return codes.map { it.toChar() }.joinToString("")
     }
-
-    data class DramaListResponse(
-        @JsonProperty("data") val data: List<DramaItem>? = null,
-        @JsonProperty("meta") val meta: ResponseMeta? = null,
-        @JsonProperty("success") val success: Boolean? = null,
-        @JsonProperty("message") val message: String? = null,
-    )
-
-    data class DramaDetailResponse(
-        @JsonProperty("data") val data: DramaItem? = null,
-        @JsonProperty("meta") val meta: ResponseMeta? = null,
-        @JsonProperty("success") val success: Boolean? = null,
-        @JsonProperty("message") val message: String? = null,
-    )
-
-    data class DramaItem(
-        @JsonProperty("id") val id: String? = null,
-        @JsonProperty("title") val title: String? = null,
-        @JsonProperty("cover_image") val coverImage: String? = null,
-        @JsonProperty("introduction") val introduction: String? = null,
-        @JsonProperty("tags") val tags: List<String>? = null,
-        @JsonProperty("episode_count") val episodeCount: Int? = null,
-    )
-
-    data class ResponseMeta(
-        @JsonProperty("pagination") val pagination: Pagination? = null,
-    )
-
-    data class Pagination(
-        @JsonProperty("page") val page: Int? = null,
-        @JsonProperty("size") val size: Int? = null,
-        @JsonProperty("total") val total: Int? = null,
-        @JsonProperty("has_more") val hasMore: Boolean? = null,
-    )
-
-    data class ChapterResponse(
-        @JsonProperty("data") val data: List<ChapterContent>? = null,
-        @JsonProperty("extras") val extras: List<ChapterContent>? = null,
-        @JsonProperty("success") val success: Boolean? = null,
-        @JsonProperty("message") val message: String? = null,
-    )
-
-    data class ChapterContent(
-        @JsonProperty("chapter_index") val chapterIndex: String? = null,
-        @JsonProperty("stream_url") val streamUrl: List<StreamItem>? = null,
-    )
-
-    data class StreamItem(
-        @JsonProperty("quality") val quality: Int? = null,
-        @JsonProperty("url") val url: String? = null,
-    )
-
-    data class LoadData(
-        @JsonProperty("bookId") val bookId: String? = null,
-        @JsonProperty("episodeNo") val episodeNo: Int? = null,
-    )
 }
